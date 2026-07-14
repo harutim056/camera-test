@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カメラ文字認識（OCR）</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin: 20px; }
+        video, canvas { width: 100%; max-width: 400px; border: 2px solid #ccc; display: block; margin: 10px auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px dashed #333; background: #f9f9f9; min-height: 50px; white-space: pre-wrap; }
+        .loading { color: #ff9900; font-weight: bold; }
+    </style>
+    <!-- CDNからTesseract.js（OCRライブラリ）を読み込み -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body>
+
+    <h1>カメラ文字認識</h1>
+    
+    <!-- カメラ映像の表示場所 -->
+    <video id="video" autoplay playsinline></video>
+    
+    <!-- シャッターボタン -->
+    <button id="capture-btn">文字を読み取る</button>
+    
+    <!-- 撮影した画像を一時的に保存する隠しキャンバス -->
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <h3>認識結果:</h3>
+    <div id="result">ここにテキストが表示されます</div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const resultDiv = document.getElementById('result');
+
+        // 1. カメラの起動設定
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // 背面カメラを優先
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                resultDiv.innerText = "カメラの起動に失敗しました: " + err.message;
+            }
+        }
+
+        // 2. ボタンクリックで撮影とOCRを実行
+        captureBtn.addEventListener('click', async () => {
+            const ctx = canvas.getContext('2d');
+            
+            // ビデオのサイズに合わせてキャンバスを設定
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // 現在のビデオフレームをキャンバスに描画（コピー）
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 画面表示を「解析中」にする
+            resultDiv.innerHTML = '<span class="loading">文字を解析中...しばらくお待ちください。</span>';
+            captureBtn.disabled = true;
+
+            try {
+                // Tesseract.jsでOCR実行（'jpn'で日本語、'eng'で英語を認識）
+                const result = await Tesseract.recognize(
+                    canvas.toDataURL('image/jpeg'),
+                    'jpn+eng', // 日本語と英語の両方を対象にする場合
+                    { logger: m => console.log(m) } // 進捗をコンソールに表示
+                );
+
+                // 結果を出力
+                if (result.data.text.trim() === "") {
+                    resultDiv.innerText = "文字が検出されませんでした。";
+                } else {
+                    resultDiv.innerText = result.data.text;
+                }
+            } catch (error) {
+                resultDiv.innerText = "エラーが発生しました: " + error.message;
+            } finally {
+                captureBtn.disabled = false;
+            }
+        });
+
+        // 起動時にカメラを初期化
+        initCamera();
+    </script>
+</body>
+</html>
