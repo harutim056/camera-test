@@ -1,89 +1,50 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>カメラ文字認識</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin: 20px; }
-        video, canvas { width: 100%; max-width: 400px; border: 2px solid #ccc; display: block; margin: 10px auto; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #result { margin-top: 20px; padding: 10px; border: 1px dashed #333; background: #f9f9f9; min-height: 50px; white-space: pre-wrap; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>レシート写真読み込み</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 20px; }
+    /* ファイル選択ボタンを大きく見やすく装飾 */
+    .upload-btn {
+      display: inline-block; padding: 15px 30px; font-size: 1.2rem;
+      background: #007bff; color: white; border-radius: 5px; cursor: pointer;
+    }
+    input[type="file"] { display: none; }
+    #preview { width: 100%; max-width: 400px; margin-top: 20px; display: none; }
+  </style>
 </head>
 <body>
 
-    <h1>カメラ文字認識</h1>
-    <video id="video" autoplay playsinline></video>
-    <!-- 初期状態はボタンを押せないようにしておく -->
-    <button id="capture-btn" disabled>ライブラリ読み込み中...</button>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <h3>認識結果:</h3>
-    <div id="result">準備中...</div>
+  <h1>レシートを撮影</h1>
+  
+  <!-- スマホのカメラを直接起動する魔法のボタン -->
+  <label class="upload-btn">
+    ここを押してレシートを撮影
+    <input type="file" id="camera-input" accept="image/*" capture="environment">
+  </label>
 
-    <!-- 💡 Tesseract.js を読み込み（cdnjsの安定したURLに変更） -->
-    <script src="https://cloudflare.com"></script>
+  <br>
+  <!-- 撮影したレシートのプレビュー表示 -->
+  <img id="preview" alt="レシートのプレビュー">
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('capture-btn');
-        const resultDiv = document.getElementById('result');
+  <script>
+    const cameraInput = document.getElementById('camera-input');
+    const preview = document.getElementById('preview');
 
-        // 💡 完全にページと外部スクリプトが読み終わったら実行
-        window.addEventListener('load', () => {
-            // Tesseractが存在するか最終チェック
-            if (typeof Tesseract === 'undefined') {
-                resultDiv.innerText = "エラー: Tesseractライブラリの読み込みに失敗しました。ネット接続を確認してください。";
-                return;
-            }
+    cameraInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-            // 準備完了したらボタンと表示を戻す
-            captureBtn.disabled = false;
-            captureBtn.innerText = "文字を読み取る";
-            resultDiv.innerText = "カメラを起動しています...";
-            
-            initCamera();
-        });
-
-        // カメラ起動
-        async function initCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' },
-                    audio: false
-                });
-                video.srcObject = stream;
-                resultDiv.innerText = "ここにテキストが表示されます";
-            } catch (err) {
-                resultDiv.innerText = "カメラ起動失敗: " + err.message;
-            }
-        }
-
-        // 撮影とOCR
-        captureBtn.addEventListener('click', async () => {
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            resultDiv.innerText = '文字を解析中...';
-            captureBtn.disabled = true;
-
-            try {
-                // Tesseractを実行
-                const result = await Tesseract.recognize(
-                    canvas.toDataURL('image/jpeg'),
-                    'jpn+eng'
-                );
-                resultDiv.innerText = result.data.text.trim() || "文字が検出されませんでした。";
-            } catch (error) {
-                resultDiv.innerText = "OCRエラー: " + error.message;
-            } finally {
-                captureBtn.disabled = false;
-            }
-        });
-    </script>
+      // 撮った写真を画面に表示する処理
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        preview.src = event.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
 </body>
 </html>
