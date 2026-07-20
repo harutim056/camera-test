@@ -38,12 +38,26 @@
         /* 🌟 iPhoneのデフォルトフォントを呼び出す世界標準の書き方 */
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
         }
+        .resetBtn {
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 8px 15px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-bottom: 15px;
+        }     
         .container{
             max-width: 600px;
             margin: 0 auto;
             background: white;
             padding: 20px;
             border-radius: 10px;
+        }
+        .restIn{
+            border-radius: 5px;
+            font-size: 16px;
         }
         .period-row{
             display: flex;
@@ -117,11 +131,12 @@
     .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px; border-left: 5px solid #ffc107; text-align: left; }
     .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; }
         .mente{color: #dc3545; font-weight: bold;}
+        .hidden{display: none !important;}
     </style>
 </head>
 <body>
     <div id="toast-container" class="toast"></div>
-    <div class="container">
+    <div class="container" id="container">
         <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
             <h1 id="title">時間割</h1>
             <p id="week-range" style="font-weight: bold; color: #555; margin: 0;"></p>
@@ -133,6 +148,7 @@
             <label><input type="radio" name="day" value="thu" id="4"><span>木</span></label>
             <label><input type="radio" name="day" value="fri" id="5"><span>金</span></label>
         </div>
+        
         <div class="period-row">
             <div class="period-label">1時間目</div>
             <select class="period-select" id="p1"></select>
@@ -161,8 +177,24 @@
             <div class="period-label">7時間目</div>
             <select class="period-select" id="p7"></select>
           </div>
+          <div style="display: flex; justify-content: center; margin-top: 15px;">
+            <button id="resetBtn" class="resetBtn" >
+                この曜日の時間割をリセット
+              </button>
+          </div>
+          
     </div>
+    <div id="longrest-container">
+        <h1 style="display: flex; justify-content: center;">長期休暇中です！（長期休暇モード中）</h1>
+        <p style="display: flex; justify-content: center;">今は長期休暇の日付変更、課題メモのみ使用できます。</p>
+        <p style="display: flex; justify-content: center;">長期休暇モードは終了1日前に終了します。</p>
+    </div>
+    
     <div class="todo-section">
+        <div style="display: flex; align-items: center; font-size: 20px;">
+            <p style="margin-right: 20px;">長期休みの期間を入力</p>
+            <input type="date" id="longrest-start" class="restIn"><p>～</p><input type="date" id="longrest-end" class="restIn">
+          </div>
         <h2>⚠️ 提出が必要なやつメモ</h2>
         <div class="todo-form">
           <input type="text" id="todo-input" class="todo-input" placeholder="宿題や提出物の名前を入力...">
@@ -175,7 +207,7 @@
         &copy; 2026 Harutim056. All Rights Reserved.
     </footer>
     <script>
-        var subjects = ["", "国語", "代数", "幾何", "英語Ⅰ", "英語Ⅱ", "理解Ⅰ", "理科Ⅱ", "歴史", "地理", "音楽", "美術", "保健体育", "技術", "道徳", "学活・特活"];
+        var subjects = ["", "国語", "代数", "幾何", "英語Ⅰ", "英語Ⅱ", "理科Ⅰ", "理科Ⅱ", "歴史", "地理", "音楽", "美術", "保健体育", "技術", "道徳", "学活・特活"];
         var periodSelects = [
             document.getElementById("p1"), document.getElementById("p2"),
             document.getElementById("p3"), document.getElementById("p4"),
@@ -188,16 +220,42 @@
         var todoInput = document.getElementById("todo-input");
         var addTodoBtn = document.getElementById("add-todo-btn");
         var todoList = document.getElementById("todo-list");
+        var resetBtn = document.getElementById("resetBtn");
+        var lonresSt = document.getElementById("longrest-start");
+        var lonresEn = document.getElementById("longrest-end");
+        var container = document.getElementById("container");
+        var lonresConta = document.getElementById("longrest-container");
 
         var todos = JSON.parse(localStorage.getItem("school_todos")) || [];
+
+        lonresSt.addEventListener("change", checkLongRest);
+        lonresEn.addEventListener("change", checkLongRest);
+
         addTodoBtn.addEventListener("click", function(){
             var task = todoInput.value.trim();
-            if(task === "") return;
+            if(task === "") {
+                showNotification("課題名が未入力です。");
+                return;
+            }
 
             todos.push(task);
             todoInput.value = "";
+            showNotification("課題を追加しました。");
             renderTodos();
         })
+
+        resetBtn.addEventListener("click", function(){
+            if(!confirm("この曜日の時間割をリセットしますか？")) return;
+
+            periodSelects.forEach(function(select){
+                select.value = "";
+            })
+            var selectedDay = document.querySelector('input[name="day"]:checked').value;
+            var currentData = periodSelects.map(select => select.value);
+            localStorage.setItem("timetable_" + selectedDay, JSON.stringify(currentData));
+            showNotification("リセットしました。");
+        })
+
         function renderTodos(){
             todoList.innerHTML = "";
             todos.forEach(function(todo, index){
@@ -233,6 +291,46 @@
             showNotification("変更しました！");
         })
         })
+        function checkLongRest(){
+            localStorage.setItem("longrest-St", lonresSt.value);
+            localStorage.setItem("longrest-En", lonresEn.value);
+
+            var now = new Date();
+            var mon = now.getMonth() + 1;
+            var day = now.getDate();
+
+            var stMon = new Date(lonresSt.value).getMonth() + 1;
+            var enMon = new Date(lonresEn.value).getMonth() + 1;
+            var stDay = new Date(lonresSt.value).getDate();
+            var enDay = new Date(lonresEn.value).getDate() - 1;
+
+            var todayScore = mon * 100 + day;
+            var startScore = stMon * 100 + stDay;
+            var endScore = enMon * 100 + enDay;
+
+            if (todayScore >= startScore && todayScore < endScore) {
+                container.classList.add("hidden");
+                lonresConta.classList.remove("hidden");
+            }else{
+                container.classList.remove("hidden");
+                lonresConta.classList.add("hidden");
+            }
+            if(todayScore === endScore){
+                localStorage.removeItem("longrest-St");
+                localStorage.removeItem("longrest-En");
+                loadRestDate();
+            }
+        }
+
+        function loadRestDate(){
+            var savedSt = localStorage.getItem("longrest-St");
+            var savedEn = localStorage.getItem("longrest-En");
+
+            if(savedSt){lonresSt.value = savedSt}else{lonresSt.value = ""};
+            if(savedEn){lonresEn.value = savedEn}else{lonresEn.value = ""};
+        }
+
+
         function loadTimetable(){
             if (new Date().getDay() === 0 || new Date().getDay() === 6) return;
 
@@ -263,7 +361,6 @@
                     var days = ["mon", "tue", "wed", "thu", "fri"];
                     days.forEach(function(d){
                         localStorage.removeItem("timetable_" + d);
-                        
                 });
                 deleted = true;
                 localStorage.setItem("deleted", deleted);
@@ -292,15 +389,17 @@
                 return false;
         }
         window.onload = function() {
+            loadRestDate();
+            checkLongRest();
             showWeek();
             renderTodos();
-    var isWeekend = checkDate();
-    if(isWeekend){
+            var isWeekend = checkDate();
+            if(isWeekend){
         
-    }else{
-        loadTimetable();
-    }
-};
+            }else{
+                loadTimetable();
+            }
+        };
 function showWeek(){
     var now = new Date();
     var currentDay = now.getDay();
