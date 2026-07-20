@@ -1,50 +1,342 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>レシート写真読み込み</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; margin: 20px; }
-    /* ファイル選択ボタンを大きく見やすく装飾 */
-    .upload-btn {
-      display: inline-block; padding: 15px 30px; font-size: 1.2rem;
-      background: #007bff; color: white; border-radius: 5px; cursor: pointer;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-title" content="時間割管理">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500&display=swap" rel="stylesheet">
+    <title>時間割管理サイト</title>
+    <style>
+        :root{
+            --bg-color: #ffffff;
+            --text-color: #121212;
+        }
+        @media (prefers-color-scheme: dark){
+            :root{
+                --bg-color: #121212;
+                --text-color: #d2d2d7;
+            }
+        }
+
+        body{
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+
+        body,select,input,button{
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+        }
+        footer{
+        /* 🌟 iPhoneのデフォルトフォントを呼び出す世界標準の書き方 */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+        }
+        .container{
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .period-row{
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .period-label{
+            width: 80px;
+            font-weight: bold;
+        }
+        .period-select{
+            flex: 1;
+            padding: 8px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .day-select{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .day-select label{
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            background: #e0e0e0;
+            margin: 0 4px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+
+            transition: all 0.2s ease;
+        }
+        .day-select input[type="radio"]{
+            display: none;
+            
+        }
+        .day-select label:has(input:checked){
+            background: #451722;
+            color: white;
+        }
+        .toast{
+        position: fixed;
+            top: -120px; /* 最初は画面の上の外側に隠しておく */
+            left: 50%;
+            transform: translateX(-50%);/* 画面の真ん中に配置 */
+            background-color: #333;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 14px;
+            z-index: 9999;
+            /* 動きの滑らかさを設定（0.3秒かけてフュッと動く） */
+            transition: top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
     }
-    input[type="file"] { display: none; }
-    #preview { width: 100%; max-width: 400px; margin-top: 20px; display: none; }
-  </style>
+    .toast.show {
+            top: 20px;/* 画面の上から20pxの位置まで下げる */
+        }
+            /* 提出物エリアの見た目 */
+    .todo-section { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+    .todo-form { display: flex; margin-bottom: 15px; }
+    .todo-input { flex: 1; padding: 8px; font-size: 1rem; border: 1px solid #ccc; border-radius: 5px 0 0 5px; }
+    .todo-btn { padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 0 5px 5px 0; cursor: pointer; font-weight: bold; }
+    .todo-list { list-style: none; padding: 0; }
+    
+    /* 追加された宿題のカード（左端を警告用の黄色にします） */
+    .todo-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; margin-bottom: 5px; border-radius: 5px; border-left: 5px solid #ffc107; text-align: left; }
+    .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .mente{color: #dc3545; font-weight: bold;}
+    </style>
 </head>
 <body>
+    <div id="toast-container" class="toast"></div>
+    <div class="container">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <h1 id="title">時間割</h1>
+            <p id="week-range" style="font-weight: bold; color: #555; margin: 0;"></p>
+        </div>
+        <div class="day-select">
+            <label><input type="radio" name="day" value="mon" id="1" checked><span>月</span></label>
+            <label><input type="radio" name="day" value="tue" id="2"><span>火</span></label>
+            <label><input type="radio" name="day" value="wed" id="3"><span>水</span></label>
+            <label><input type="radio" name="day" value="thu" id="4"><span>木</span></label>
+            <label><input type="radio" name="day" value="fri" id="5"><span>金</span></label>
+        </div>
+        <div class="period-row">
+            <div class="period-label">1時間目</div>
+            <select class="period-select" id="p1"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">2時間目</div>
+            <select class="period-select" id="p2"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">3時間目</div>
+            <select class="period-select" id="p3"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">4時間目</div>
+            <select class="period-select" id="p4"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">5時間目</div>
+            <select class="period-select" id="p5"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">6時間目</div>
+            <select class="period-select" id="p6"></select>
+          </div>
+          <div class="period-row">
+            <div class="period-label">7時間目</div>
+            <select class="period-select" id="p7"></select>
+          </div>
+    </div>
+    <div class="todo-section">
+        <h2>⚠️ 提出が必要なやつメモ</h2>
+        <div class="todo-form">
+          <input type="text" id="todo-input" class="todo-input" placeholder="宿題や提出物の名前を入力...">
+          <button id="add-todo-btn" class="todo-btn">追加</button>
+        </div>
+        <ul id="todo-list" class="todo-list"></ul>
+      </div>
+      <footer style="margin-top: 40px; font-size: 11px; color: #86868b; text-align: center;">
+        ※404というエラーが出てサイトが開けない場合は、<span class="mente">メンテナンス中</span>です。<br>
+        &copy; 2026 Harutim056. All Rights Reserved.
+    </footer>
+    <script>
+        var subjects = ["", "国語", "代数", "幾何", "英語Ⅰ", "英語Ⅱ", "理解Ⅰ", "理科Ⅱ", "歴史", "地理", "音楽", "美術", "保健体育", "技術", "道徳", "学活・特活"];
+        var periodSelects = [
+            document.getElementById("p1"), document.getElementById("p2"),
+            document.getElementById("p3"), document.getElementById("p4"),
+            document.getElementById("p5"), document.getElementById("p6"),
+            document.getElementById("p7")
+        ];
+        var dayRadios = document.querySelectorAll('input[name="day"]');
+        var title = document.getElementById("title");
+        var deleted = false;
+        var todoInput = document.getElementById("todo-input");
+        var addTodoBtn = document.getElementById("add-todo-btn");
+        var todoList = document.getElementById("todo-list");
 
-  <h1>レシートを撮影</h1>
-  
-  <!-- スマホのカメラを直接起動する魔法のボタン -->
-  <label class="upload-btn">
-    ここを押してレシートを撮影
-    <input type="file" id="camera-input" accept="image/*" capture="environment">
-  </label>
+        var todos = JSON.parse(localStorage.getItem("school_todos")) || [];
+        addTodoBtn.addEventListener("click", function(){
+            var task = todoInput.value.trim();
+            if(task === "") return;
 
-  <br>
-  <!-- 撮影したレシートのプレビュー表示 -->
-  <img id="preview" alt="レシートのプレビュー">
+            todos.push(task);
+            todoInput.value = "";
+            renderTodos();
+        })
+        function renderTodos(){
+            todoList.innerHTML = "";
+            todos.forEach(function(todo, index){
+                var li = document.createElement("li");
+                li.className = 'todo-item';
+                li.innerHTML = '<span>' + todo + '</span><button class="delete-btn">提出済</button>';
+                var dlBtn = li.querySelector(".delete-btn");
+                dlBtn.addEventListener("click", function(){
+                    todos.splice(index, 1);
+                    renderTodos();
+                    showNotification("提出完了！");
+                })
+                todoList.appendChild(li);
+                
+            })
+            localStorage.setItem('school_todos', JSON.stringify(todos));
+        }
 
-  <script>
-    const cameraInput = document.getElementById('camera-input');
-    const preview = document.getElementById('preview');
+        periodSelects.forEach(function(select){
+            subjects.forEach(function(subject){
+                var option = document.createElement("option");
+                option.value = subject;
+                option.textContent = subject === "" ? "---休み、未設定---" : subject;
+                select.appendChild(option);
+            })
+        })
+        periodSelects.forEach(function(select){
+            select.addEventListener("change", function(){
+            var selectedDay = document.querySelector('input[name="day"]:checked').value;
+            var currentData = periodSelects.map(select => select.value);
+            
+            localStorage.setItem("timetable_" + selectedDay, JSON.stringify(currentData));
+            showNotification("変更しました！");
+        })
+        })
+        function loadTimetable(){
+            if (new Date().getDay() === 0 || new Date().getDay() === 6) return;
 
-    cameraInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+            var selectedDay = document.querySelector('input[name="day"]:checked').value;
+            var savedData = JSON.parse(localStorage.getItem("timetable_" + selectedDay)) || ["", "", "", "", "", "", ""];
+            
+            periodSelects.forEach(function(select, index){
+                select.value = savedData[index];
+            });
+        }
+        dayRadios.forEach(function(radio){
+            radio.addEventListener("change", loadTimetable);
+        })
+        loadTimetable();
 
-      // 撮った写真を画面に表示する処理
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        preview.src = event.target.result;
-        preview.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    });
-  </script>
+        function checkDate(){
+            var now = new Date();
+            var currentDayOfWeek = now.getDay();
+            if(currentDayOfWeek === 0 || currentDayOfWeek === 6){
+                title.innerText = "来週の時間割"
+                return true;
+            }else{
+                title.innerText = "時間割"
+            }
+
+            if(currentDayOfWeek === 6){
+                if(localStorage.getItem("deleted") === "false" || localStorage.getItem("deleted") === null){
+                    var days = ["mon", "tue", "wed", "thu", "fri"];
+                    days.forEach(function(d){
+                        localStorage.removeItem("timetable_" + d);
+                        
+                });
+                deleted = true;
+                localStorage.setItem("deleted", deleted);
+                }
+                
+            }else{
+                deleted = false;
+                localStorage.setItem("deleted", deleted);
+            }
+            var dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+            if(currentDayOfWeek >=1 && currentDayOfWeek <= 5){
+                for(var i = 1; i < currentDayOfWeek; i++){
+                    var targetDayStr = dayNames[i];
+                    var targetRadio = document.querySelector('input[name="day"][value="'+ targetDayStr +'"]');
+                    if(targetRadio){
+                        targetRadio.disabled = true;                    
+                    }
+                }
+                var currentRadio = document.querySelector('input[name="day"]:checked');
+                if(currentRadio && currentRadio.disabled){
+                    var todayStr = dayNames[currentDayOfWeek];
+                    document.querySelector('input[name="day"][value="'+ todayStr +'"]').checked = true;
+                }
+            }
+           
+                return false;
+        }
+        window.onload = function() {
+            showWeek();
+            renderTodos();
+    var isWeekend = checkDate();
+    if(isWeekend){
+        
+    }else{
+        loadTimetable();
+    }
+};
+function showWeek(){
+    var now = new Date();
+    var currentDay = now.getDay();
+    var diffToMon = currentDay === 0 ? 1 : 1 - currentDay;
+    var mon = new Date(now);
+    mon.setDate(now.getDate() + diffToMon);
+
+    var fri = new Date(mon);
+    fri.setDate(mon.getDate() + 4);
+
+    var rangeText = (mon.getMonth() + 1) + "/" + mon.getDate() + "～" + (fri.getMonth() + 1) + "/" + fri.getDate();
+    document.getElementById("week-range").textContent = rangeText;
+}
+function showNotification(message) {
+            var toast = document.getElementById("toast-container");
+        toast.classList.remove("show");
+        toast.textContent = message;
+        toast.style.backgroundColor = "#333";
+        waitTime = 1500;
+
+        if(window.toastTimeout){
+            setTimeout(function() {
+            toast.classList.add("show");
+            }, 40);
+        }else{
+            toast.classList.add("show");
+        }
+        
+        
+        if (window.toastTimeout) {
+            clearTimeout(window.toastTimeout);
+        }
+        window.toastTimeout = setTimeout(function(){
+            toast.classList.remove("show");
+        }, waitTime);
+}
+    </script>
 </body>
 </html>
